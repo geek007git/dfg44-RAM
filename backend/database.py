@@ -6,33 +6,45 @@ import socket
 from dotenv import load_dotenv
 from fastapi import HTTPException
 
-# WORKAROUND: Force IPv4 to avoid "Cannot assign requested address" on Vercel (IPv6 issues)
-# This filters out IPv6 addresses from DNS resolution
-old_getaddrinfo = socket.getaddrinfo
-def new_getaddrinfo(*args, **kwargs):
-    responses = old_getaddrinfo(*args, **kwargs)
-    return [response for response in responses if response[0] == socket.AF_INET]
-socket.getaddrinfo = new_getaddrinfo
-
 load_dotenv()
 
 # Get Database URL from environment variable
-# If using Supabase, ensure the connection string is for "transaction mode" (port 6543) or "session mode" (port 5432)
-# Example: postgresql://postgres:[PASSWORD]@db.[PROJECT_ID].supabase.co:5432/postgres
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not SQLALCHEMY_DATABASE_URL:
     # Fallback to SQLite
     SQLALCHEMY_DATABASE_URL = "sqlite:///./backend/commissions.db"
     connect_args = {"check_same_thread": False}
-    engine = create_engine(
-        SQLALCHEMY_DATABASE_URL, connect_args=connect_args
-    )
+    try:
+        engine = create_engine(
+            SQLALCHEMY_DATABASE_URL, connect_args=connect_args
+        )
+    except Exception as e:
+        print(f"CRITICAL: Error creating SQLite DB engine: {e}")
+        engine = None
 else:
     # Postgres usage
     if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
     
+    # -------------------------------------------------------------------------
+    # WORKAROUND: Force IPv4 for Supabase on Vercel
+    # Vercel sometimes attempts IPv6 connections which fail with "Cannot assign requested address"
+    # We manually resolve the hostname to an IPv4 address to bypass this.
+    # -------------------------------------------------------------------------
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(SQLALCHEMY_DATABASE_URL)
+        hostname = parsed.hostname
+        
+        if hostname:
+            ip_address = socket.gethostbyname(hostname)
+            SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(hostname, ip_address)
+            print(f"✅ Resolved {hostname} to {ip_address} to force IPv4 connection")
+    except Exception as e:
+        print(f"⚠️ Failed to force IPv4 resolution: {e}")
+    # -------------------------------------------------------------------------
+
     connect_args = {
         "keepalives": 1,
         "keepalives_idle": 30,
@@ -54,8 +66,6 @@ else:
         engine = None
 
 # Create SessionLocal class
-# If engine is None, this will create an unbound session factory.
-# Attempts to use the session for DB operations will fail, but the app will start.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class for models
