@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.pool import NullPool
 import os
 from dotenv import load_dotenv
 
@@ -14,16 +15,19 @@ if not SQLALCHEMY_DATABASE_URL:
     # Fallback to SQLite
     SQLALCHEMY_DATABASE_URL = "sqlite:///./backend/commissions.db"
     connect_args = {"check_same_thread": False}
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL, connect_args=connect_args
+    )
 else:
     # Postgres adjustments
     connect_args = {}
     if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
-# Create Database Engine
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args=connect_args
-)
+    
+    # Create Database Engine with NullPool for Serverless
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL, connect_args=connect_args, poolclass=NullPool
+    )
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
