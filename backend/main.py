@@ -110,14 +110,37 @@ async def websocket_endpoint(websocket: WebSocket, application_id: int):
 @app.get("/api/debug-db")
 def debug_database():
     import os
+    import socket
+    from urllib.parse import urlparse
+    
     db_url = os.getenv("DATABASE_URL")
     
     status = {
         "database_url_present": bool(db_url),
         "engine_initialized": database.engine is not None,
-        "connection_error": None
+        "connection_error": None,
+        "dns_resolution": "Not attempted"
     }
     
+    # Test DNS Resolution Logic
+    if db_url:
+        try:
+            parsed = urlparse(db_url)
+            hostname = parsed.hostname
+            if hostname:
+                ip = socket.gethostbyname(hostname)
+                status["dns_resolution"] = f"Hostname: {hostname} -> IP: {ip}"
+                status["hostname"] = hostname
+                status["resolved_ip"] = ip
+                
+                # Check what the engine is actually using
+                if database.engine:
+                    status["engine_url_host"] = database.engine.url.host
+            else:
+                status["dns_resolution"] = "Could not parse hostname from URL"
+        except Exception as e:
+            status["dns_resolution"] = f"DNS Error: {str(e)}"
+
     # Mask URL for security if present
     if db_url:
         status["masked_url"] = db_url[:15] + "..." if len(db_url) > 15 else "Short URL"
