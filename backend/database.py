@@ -2,8 +2,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
 import os
+import socket
 from dotenv import load_dotenv
 from fastapi import HTTPException
+
+# WORKAROUND: Force IPv4 to avoid "Cannot assign requested address" on Vercel (IPv6 issues)
+# This filters out IPv6 addresses from DNS resolution
+old_getaddrinfo = socket.getaddrinfo
+def new_getaddrinfo(*args, **kwargs):
+    responses = old_getaddrinfo(*args, **kwargs)
+    return [response for response in responses if response[0] == socket.AF_INET]
+socket.getaddrinfo = new_getaddrinfo
 
 load_dotenv()
 
