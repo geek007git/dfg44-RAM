@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | LS.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .applications-grid {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        }
+
+        .app-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .app-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        .status-accepted {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .status-rejected {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .app-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .app-email {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .app-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .app-letter {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            max-height: 100px;
+            overflow-y: auto;
+            color: #d1d1d1;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-approve {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-approve:hover:not(:disabled) {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-reject {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .btn-reject:hover:not(:disabled) {
+            background: rgba(244, 67, 54, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">LS. Admin</div>
+            <nav>
+                <a href="/">Home</a>
+                <button onclick="fetchApplications()" class="refresh-btn">Refresh</button>
+            </nav>
+        </header>
+
+        <div class="dashboard-container">
+            <div class="header-actions">
+                <h1>Review Applications</h1>
+                <span id="count-badge" style="color: var(--text-secondary);">Loading...</span>
+            </div>
+
+            <div id="applications-grid" class="applications-grid">
+                <!-- Cards Injected Here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', fetchApplications);
+
+        async function fetchApplications() {
+            const grid = document.getElementById('applications-grid');
+            const countBadge = document.getElementById('count-badge');
+
+            grid.innerHTML = '<div style="color: var(--text-secondary);">Loading applications...</div>';
+
+            try {
+                const res = await fetch('/api/admin/applications'); // Reusing existing or new endpoint? Creating dedicated endpoint.
+                // Note: I added /api/admin/applications in main.py
+                if (!res.ok) throw new Error('Failed to fetch');
+
+                const apps = await res.json();
+                countBadge.innerText = `${apps.length} Total Applications`;
+                grid.innerHTML = '';
+
+                if (apps.length === 0) {
+                    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem;">No applications found.</div>';
+                    return;
+                }
+
+                apps.forEach(app => {
+                    const statusClass = `status-${app.status.toLowerCase()}`;
+                    const isDisabled = app.status !== 'Pending';
+
+                    const card = document.createElement('div');
+                    card.className = 'app-card';
+                    card.innerHTML = `
+                        <div class="status-badge ${statusClass}">${app.status}</div>
+                        <div class="app-name">${app.full_name}</div>
+                        <div class="app-email">${app.email}</div>
+                        
+                        <div class="app-meta">
+                            <span>📅 ${new Date(app.created_at).toLocaleDateString()}</span>
+                            ${app.portfolio_url ? `<a href="${app.portfolio_url}" target="_blank" style="color: var(--accent);">🔗 Portfolio</a>` : ''}
+                        </div>
+
+                        <div class="app-letter">
+                            ${app.cover_letter || 'No cover letter provided.'}
+                        </div>
+
+                        <div class="action-buttons">
+                            <button onclick="updateStatus(${app.id}, 'Rejected')" 
+                                    class="btn btn-reject" 
+                                    ${isDisabled ? 'disabled' : ''}>
+                                ✕ Reject
+                            </button>
+                            <button onclick="updateStatus(${app.id}, 'Accepted')" 
+                                    class="btn btn-approve" 
+                                    ${isDisabled ? 'disabled' : ''}>
+                                ✓ Approve
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+            } catch (err) {
+                console.error(err);
+                grid.innerHTML = '<div style="color: #f44336;">Failed to load applications. Make sure backend is running.</div>';
+            }
+        }
+
+        async function updateStatus(id, newStatus) {
+            if (!confirm(`Are you sure you want to mark this application as ${newStatus}?`)) return;
+
+            try {
+                const res = await fetch(`/api/applications/${id}/status`, {
+                    method: 'PUT', // Using PUT since we are updating resource
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (res.ok) {
+                    // visual feedback immediate
+                    fetchApplications(); // Reload grid
+                } else {
+                    alert('Failed to update status');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error updating status');
+            }
+        }
+    </script>
+</body>
+
+</html>

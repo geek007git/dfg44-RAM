@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commission Details | LS.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Specific enhancements for details page */
+        .details-wrapper {
+            margin-top: 2rem;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .header-band {
+            background: linear-gradient(135deg, rgba(94, 106, 210, 0.1), rgba(0, 0, 0, 0));
+            padding: 3rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .apply-card {
+            background-color: var(--bg-card);
+            padding: 2.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            font-family: var(--font-main);
+            transition: 0.2s;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: var(--accent);
+            outline: none;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .submit-btn {
+            background: var(--accent);
+            color: #fff;
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .submit-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Navigation -->
+        <header class="main-header">
+            <div class="logo">LS.</div>
+            <nav>
+                <a href="/">Commissions</a> <!-- Link back to list -->
+                <a href="#">Projects</a>
+                <a href="#">About</a>
+                <a href="#" class="cta-button">Join Now</a>
+            </nav>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="details-wrapper">
+            <div id="loading-indicator">Loading Details...</div>
+
+            <div id="job-content" style="display: none;">
+                <div class="header-band">
+                    <span id="job-category" class="category-tag">Loading...</span>
+                    <!-- Title -->
+                    <h1 id="job-title" class="page-title" style="font-size: 2.5rem; margin-top: 0.5rem;">Loading...</h1>
+                    <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <span class="posted-date">Posted via LS. Platform</span>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 3rem;">
+                    <!-- Description Section -->
+                    <div class="job-description">
+                        <h3 style="margin-bottom: 1rem; font-size: 1.4rem;">Overview</h3>
+                        <div id="job-description-text" style="color: var(--text-secondary); line-height: 1.8;">
+                            Loading description...
+                        </div>
+                    </div>
+
+                    <!-- Application Form -->
+                    <div class="apply-section">
+                        <div class="apply-card">
+                            <h3 style="margin-bottom: 1.5rem;">Apply for this Position</h3>
+                            <form id="application-form">
+                                <div class="form-group">
+                                    <label for="full_name">Full Name</label>
+                                    <input type="text" id="full_name" name="full_name" required placeholder="user">
+                                </div>
+                                <div class="form-group">
+                                    <label for="email">Email Address</label>
+                                    <input type="email" id="email" name="email" required placeholder="user@example.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="portfolio_url">Portfolio / LinkedIn</label>
+                                    <input type="url" id="portfolio_url" name="portfolio_url" placeholder="https://...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cover_letter">Cover Letter / Why You?</label>
+                                    <textarea id="cover_letter" name="cover_letter" rows="5" required></textarea>
+                                </div>
+                                <button type="submit" class="submit-btn" id="submit-btn">Submit Application</button>
+                            </form>
+                            <div id="form-message" style="margin-top: 1rem; text-align: center; display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Get ID from URL path: /commission/{id}
+            const pathParts = window.location.pathname.split('/');
+            const commissionId = pathParts[pathParts.length - 1]; // Last part is ID
+
+            if (!commissionId) {
+                alert('Invalid Job ID');
+                window.location.href = '/'; // Redirect home
+                return;
+            }
+
+            const headerTitle = document.getElementById('job-title');
+            const categorySpan = document.getElementById('job-category');
+            const descriptionDiv = document.getElementById('job-description-text');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const jobContent = document.getElementById('job-content');
+
+            // Fetch Job Data
+            try {
+                const response = await fetch(`/api/commissions/${commissionId}`);
+                if (!response.ok) throw new Error('Job not found');
+
+                const job = await response.json();
+
+                // Populate UI
+                headerTitle.innerText = job.title;
+                categorySpan.innerText = job.category;
+                descriptionDiv.innerHTML = job.description.replace(/\n/g, '<br/>'); // Text formatting
+
+                // Show Content
+                loadingIndicator.style.display = 'none';
+                jobContent.style.display = 'block';
+
+            } catch (err) {
+                console.error(err);
+                loadingIndicator.innerText = 'Failed to load job details.';
+            }
+
+            // Handle Form Submission
+            const form = document.getElementById('application-form');
+            const submitBtn = document.getElementById('submit-btn');
+            const formMessage = document.getElementById('form-message');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Submitting...";
+                formMessage.style.display = 'none';
+
+                const formData = {
+                    full_name: document.getElementById('full_name').value,
+                    email: document.getElementById('email').value,
+                    portfolio_url: document.getElementById('portfolio_url').value,
+                    cover_letter: document.getElementById('cover_letter').value,
+                };
+
+                try {
+                    const res = await fetch(`/api/commissions/${commissionId}/apply`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        form.reset();
+                        submitBtn.innerText = "Redirecting...";
+                        submitBtn.style.background = "#4caf50";
+
+                        // Redirect to status page
+                        setTimeout(() => {
+                            window.location.href = `/status/${data.id}`;
+                        }, 1000);
+                    } else {
+                        throw new Error('Submission failed');
+                    }
+                } catch (error) {
+                    console.error('Error submitting application:', error);
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Try Again";
+                    formMessage.innerText = "Something went wrong. Please try again.";
+                    formMessage.style.color = "#ff5252";
+                    formMessage.style.display = 'block';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

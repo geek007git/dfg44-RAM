@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Status | LS.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .status-wrapper {
+            max-width: 800px;
+            margin: 4rem auto;
+            text-align: center;
+        }
+
+        .status-card {
+            background-color: var(--bg-card);
+            padding: 3rem;
+            border-radius: var(--border-radius);
+            margin-top: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Ambient Glow based on status */
+        .status-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(94, 106, 210, 0.15), transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .status-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            color: var(--accent);
+            z-index: 1;
+        }
+
+        .status-title {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            z-index: 1;
+        }
+
+        .status-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            z-index: 1;
+        }
+
+        .status-badge {
+            background: rgba(94, 106, 210, 0.2);
+            color: #bdc2ff;
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.2rem;
+            border: 1px solid rgba(94, 106, 210, 0.3);
+            z-index: 1;
+            margin-bottom: 2rem;
+            transition: all 0.5s ease;
+        }
+
+        .details-list {
+            text-align: left;
+            width: 100%;
+            max-width: 500px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            z-index: 1;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.8rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+        }
+
+        .detail-value {
+            font-weight: 500;
+        }
+
+        .back-btn {
+            margin-top: 2rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+            z-index: 1;
+        }
+
+        .back-btn:hover {
+            color: #fff;
+        }
+
+        /* Animation for real-time feel */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(94, 106, 210, 0.4);
+            }
+
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(94, 106, 210, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(94, 106, 210, 0);
+            }
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #4caf50;
+            margin-bottom: 1rem;
+            background: rgba(76, 175, 80, 0.1);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #4caf50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Navigation -->
+        <header class="main-header">
+            <div class="logo">LS.</div>
+            <nav>
+                <a href="/">Commissions</a>
+                <a href="#">Projects</a>
+            </nav>
+        </header>
+
+        <main class="status-wrapper">
+            <div class="live-indicator">
+                <div class="dot"></div> Live Connection
+            </div>
+
+            <div class="status-card">
+                <div class="status-glow"></div>
+                <div class="status-icon">🚀</div>
+
+                <h1 class="status-title">Application Submitted</h1>
+                <p class="status-subtitle">We have received your application successfully.</p>
+
+                <div id="status-badge" class="status-badge">Pending Review</div>
+
+                <div class="details-list">
+                    <div class="detail-item">
+                        <span class="detail-label">Application ID</span>
+                        <span class="detail-value" id="app-id">#...</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Name</span>
+                        <span class="detail-value" id="app-name">...</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Submitted On</span>
+                        <span class="detail-value" id="app-date">...</span>
+                    </div>
+                </div>
+
+                <a href="/" class="back-btn">← Back to Commissions</a>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Get ID from URL path: /status/{id}
+            const pathParts = window.location.pathname.split('/');
+            const applicationId = pathParts[pathParts.length - 1];
+
+            if (!applicationId) {
+                alert('Invalid Application ID');
+                window.location.href = '/';
+                return;
+            }
+
+            // Function to update UI
+            const updateUI = (data) => {
+                document.getElementById('app-id').innerText = '#' + data.id;
+                document.getElementById('app-name').innerText = data.full_name;
+                document.getElementById('status-badge').innerText = data.status || 'Pending';
+
+                const date = new Date(data.created_at);
+                document.getElementById('app-date').innerText = date.toLocaleDateString();
+
+                // Dynamic styling based on status
+                const badge = document.getElementById('status-badge');
+                if (data.status === 'Accepted') {
+                    badge.style.background = 'rgba(76, 175, 80, 0.2)';
+                    badge.style.color = '#4caf50';
+                    badge.style.borderColor = 'rgba(76, 175, 80, 0.3)';
+                    document.querySelector('.status-title').innerText = "Congratulations!";
+                    document.querySelector('.status-subtitle').innerText = "Your application has been accepted.";
+                    document.querySelector('.status-icon').innerText = "🎉";
+
+                    // Auto-redirect to Interview Page
+                    setTimeout(() => {
+                        window.location.href = '/interview';
+                    }, 2000);
+                } else if (data.status === 'Rejected') {
+                    badge.style.background = 'rgba(244, 67, 54, 0.2)';
+                    badge.style.color = '#f44336';
+                    badge.style.borderColor = 'rgba(244, 67, 54, 0.3)';
+                    document.querySelector('.status-title').innerText = "Application Update";
+                    document.querySelector('.status-subtitle').innerText = "Unfortunately, we are keeping your info on file.";
+                    document.querySelector('.status-icon').innerText = "📂";
+                }
+            };
+
+            // 1. Initial Fetch
+            try {
+                const response = await fetch(`/api/applications/${applicationId}`);
+                if (!response.ok) throw new Error('Application not found');
+                const data = await response.json();
+                updateUI(data);
+            } catch (err) {
+                console.error(err);
+                document.querySelector('.status-title').innerText = "Error Loading Status";
+            }
+
+            // 2. Real-time Connection (WebSocket)
+            // This is the "Two-Way Protocol" Implementation
+            const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            const wsUrl = `${protocol}://${window.location.host}/ws/application/${applicationId}`;
+
+            const socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                console.log('Connected to real-time updates');
+            };
+
+            socket.onmessage = (event) => {
+                console.log('Message from server:', event.data);
+                // In a real app, the server would send the new status JSON here
+                // For now, we can just re-fetch or parse the message if it structured
+            };
+
+            // Polling fallback (since WS is just a placeholder in backend)
+            setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/applications/${applicationId}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateUI(data);
+                    }
+                } catch (e) { }
+            }, 5000); // Check every 5 seconds
+        });
+    </script>
+</body>
+
+</html>
