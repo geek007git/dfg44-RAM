@@ -27,57 +27,40 @@ else:
     if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
     
-    # Postgres usage
-    if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
-        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    
     # -------------------------------------------------------------------------
-    # SMART FIX: Use Supabase Connection Pooler (IPv4)
-    # Direct connection (db.xxx.supabase.co) resolves to IPv6-only on Vercel, causing failure.
-    # We rewrite the URL to use the IPv4-compatible connection pooler.
-    # Assumed Region: ap-south-1 (based on user location)
+    # SMART FIX: Use Supabase Connection Pooler (IPv4) - Transaction Mode
     # -------------------------------------------------------------------------
     try:
-        from urllib.parse import urlparse, urlunparse
+        from sqlalchemy.engine.url import make_url
         
-        parsed = urlparse(SQLALCHEMY_DATABASE_URL)
-        hostname = parsed.hostname
+        # Safe URL parsing
+        db_url = make_url(SQLALCHEMY_DATABASE_URL)
         
-        # Check if direct Supabase URL
-        if hostname and hostname.endswith(".supabase.co") and "db." in hostname:
-            project_ref = hostname.split(".")[0].replace("db.", "")
+        # Check if direct Supabase URL (db.project.supabase.co)
+        if db_url.host and db_url.host.endswith(".supabase.co") and "db." in db_url.host:
+            project_ref = db_url.host.split(".")[0].replace("db.", "")
             
-            # 1. Update Hostname to Pooler (IPv4 compatible)
-            # Defaulting to ap-south-1 (Mumbai) based on user location
+            # Switch to Transaction Mode Pooler (IPv4 compatible, Port 6543)
+            # This is cleaner for Serverless environments
             pooler_hostname = "aws-0-ap-south-1.pooler.supabase.com"
             
-            # 2. Update Username to [user].[project_ref] for Pooler
-            username = parsed.username
-            if username and "." not in username:
-                new_username = f"{username}.{project_ref}"
+            # Update User: postgres -> postgres.project_ref
+            current_user = db_url.username
+            if current_user and "." not in current_user:
+                new_user = f"{current_user}.{project_ref}"
             else:
-                new_username = username
+                new_user = current_user
+                
+            # Construct new robust URL
+            # Note: set() returns a NEW URL object in newer SQLAlchemy versions
+            db_url = db_url.set(
+                host=pooler_hostname,
+                username=new_user,
+                port=6543
+            )
             
-            # Reconstruct URL with new host and username
-            # scheme://user:pass@host:port/path?query
-            port = parsed.port or 5432
-            
-            # Fix: urlparse is immutable, construct string manually or use replacement
-            # Password might have special chars, so we use string replacement carefully
-            # A safer way to replace netloc:
-            new_netloc = f"{new_username}:{parsed.password}@{pooler_hostname}:{port}"
-            
-            # Replace netloc in the parsed object (requires converting to list/dict or using format)
-            # Simplest: String replacement on the URL if it matches standard format
-            # But let's be robust.
-            
-            SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(hostname, pooler_hostname)
-            
-            # Replace username in URL if needed
-            if username != new_username:
-                 SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(f"{username}:", f"{new_username}:", 1)
-            
-            print(f"✅ Auto-Switched to IPv4 Pooler: {pooler_hostname}")
+            SQLALCHEMY_DATABASE_URL = str(db_url)
+            print(f"✅ Auto-Switched to IPv4 Pooler (Tx Mode): {pooler_hostname}")
             
     except Exception as e:
         print(f"⚠️ Failed to apply Pooler fix: {e}")
@@ -91,9 +74,6 @@ else:
     }
     
     # Supabase/Postgres on Vercel often requires SSL
-    # Pooler usually supports it but might not strictly require 'sslmode=require' in query
-    # We keep it as is, or relax it if pooler rejects. 
-    # Usually pooler accepts sslmode=require.
     if "supabase" in SQLALCHEMY_DATABASE_URL and "sslmode" not in SQLALCHEMY_DATABASE_URL:
         connect_args["sslmode"] = "require"
 
