@@ -18,6 +18,17 @@ except Exception as e:
 
 app = FastAPI()
 
+# Determine absolute path to frontend directory
+# current file is in backend/main.py, so we go up one level
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+
+# Static Files & Pages
+if not os.path.exists(FRONTEND_DIR):
+    os.makedirs(FRONTEND_DIR)
+
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
 # Database dependency
 def get_db():
     db = database.SessionLocal()
@@ -25,8 +36,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-# API Endpoints
 
 # 1. Fetch All Commissions
 @app.get("/api/commissions", response_model=List[schemas.Commission])
@@ -98,28 +107,22 @@ async def websocket_endpoint(websocket: WebSocket, application_id: int):
     except Exception:
         pass
 
-# Static Files & Pages
-if not os.path.exists("frontend"):
-    os.makedirs("frontend")
-
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
-
 @app.get("/")
 def read_root():
-    return FileResponse('frontend/index.html')
+    return FileResponse(os.path.join(FRONTEND_DIR, 'index.html'))
 
 @app.get("/commission/{id}")
 def read_commission_page(id: int):
-    return FileResponse('frontend/commission.html')
+    return FileResponse(os.path.join(FRONTEND_DIR, 'commission.html'))
 
 @app.get("/status/{id}")
 def read_status_page(id: int):
-    return FileResponse('frontend/status.html')
+    return FileResponse(os.path.join(FRONTEND_DIR, 'status.html'))
 
 @app.get("/admin")
 def read_admin_page():
-    return FileResponse('frontend/admin.html')
+    return FileResponse(os.path.join(FRONTEND_DIR, 'admin.html'))
 
 @app.get("/interview")
 def read_interview_page():
-    return FileResponse('frontend/interview.html')
+    return FileResponse(os.path.join(FRONTEND_DIR, 'interview.html'))
