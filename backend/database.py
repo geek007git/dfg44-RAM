@@ -47,10 +47,11 @@ else:
                     "aws-0-ap-south-1.pooler.supabase.com"
                 )
             
-            # 3. Simple String Replace for Port (5432 -> 6543)
-            # Transaction mode uses 6543.
-            if ":5432" in SQLALCHEMY_DATABASE_URL:
-                SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(":5432", ":6543")
+            # 3. Port: Keep as 5432 (Session Mode)
+            # Transaction mode (6543) breaks SQLAlchemy defaults (prepared statements).
+            # We stick to 5432 for maximum compatibility.
+            # if ":5432" in SQLALCHEMY_DATABASE_URL:
+            #     SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(":5432", ":6543")
                 
             # 4. Fix Username (postgres -> postgres.dteuzkezeefjhumdlojo)
             # We need to be careful not to replace password parts.
