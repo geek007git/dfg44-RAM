@@ -28,49 +28,52 @@ else:
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
     
     # -------------------------------------------------------------------------
-    # TARGETED FIX: Use Supabase Connection Pooler (IPv4)
+    # BRUTE FORCE FIX: Use Supabase Connection Pooler (IPv4)
     # -------------------------------------------------------------------------
     try:
-        from urllib.parse import urlparse, urlunparse, quote_plus
-        
-        # Use standard urllib to parse
-        parsed = urlparse(SQLALCHEMY_DATABASE_URL)
-        
-        # Check for specific project hostname to be absolutely sure
-        if "dteuzkezeefjhumdlojo" in parsed.hostname:
-            print("✅ Detected Project: dteuzkezeefjhumdlojo")
+        # Only act if we see the specific project ID in the URL
+        if "dteuzkezeefjhumdlojo" in SQLALCHEMY_DATABASE_URL:
+            print("✅ BRUTE FORCE: Detected Project dteuzkezeefjhumdlojo")
             
-            # 1. Host -> Pooler
-            new_hostname = "aws-0-ap-south-1.pooler.supabase.com"
+            # 1. Ensure Scheme is postgresql://
+            if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+                SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
             
-            # 2. Port -> 6543 (Transaction Mode)
-            new_port = 6543
+            # 2. Simple String Replace for Hostname
+            # This handles the host switch
+            if "db.dteuzkezeefjhumdlojo.supabase.co" in SQLALCHEMY_DATABASE_URL:
+                SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(
+                    "db.dteuzkezeefjhumdlojo.supabase.co", 
+                    "aws-0-ap-south-1.pooler.supabase.com"
+                )
             
-            # 3. User -> user.project_ref
-            username = parsed.username
-            project_ref = "dteuzkezeefjhumdlojo"
-            if username and "." not in username:
-                new_username = f"{username}.{project_ref}"
-            else:
-                new_username = username
+            # 3. Simple String Replace for Port (5432 -> 6543)
+            # Transaction mode uses 6543.
+            if ":5432" in SQLALCHEMY_DATABASE_URL:
+                SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(":5432", ":6543")
                 
-            # Reconstruct the URL manually to avoid library issues
-            # scheme://user:pass@host:port/path
+            # 4. Fix Username (postgres -> postgres.dteuzkezeefjhumdlojo)
+            # We need to be careful not to replace password parts.
+            # Splitting by @ lets us isolate credentials.
+            if "@" in SQLALCHEMY_DATABASE_URL:
+                parts = SQLALCHEMY_DATABASE_URL.split("@")
+                # parts[0] is 'postgresql://user:pass'
+                # parts[1] is 'host:port/db'
+                
+                creds_section = parts[0]
+                if "://" in creds_section:
+                    scheme, creds = creds_section.split("://")
+                    if ":" in creds:
+                        user, password = creds.split(":", 1)
+                        if "." not in user:
+                            new_user = f"{user}.dteuzkezeefjhumdlojo"
+                            # Rebuild the first part
+                            parts[0] = f"{scheme}://{new_user}:{password}"
+                            # Rejoin entire URL
+                            SQLALCHEMY_DATABASE_URL = "@".join(parts)
+                            print(f"✅ BRUTE FORCE: Updated username to {new_user}")
             
-            # Handle password safely (it might have special chars)
-            password = parsed.password
-            path = parsed.path
-            query = parsed.query
-            
-            # Rebuild netloc
-            new_netloc = f"{new_username}:{password}@{new_hostname}:{new_port}"
-            
-            # Update the URL
-            # _replace method is available on the named tuple returned by urlparse
-            new_parsed = parsed._replace(netloc=new_netloc)
-            SQLALCHEMY_DATABASE_URL = urlunparse(new_parsed)
-            
-            print(f"✅ REWRITTEN URL TO: {new_hostname}:{new_port}")
+            print(f"✅ BRUTE FORCE URL: {SQLALCHEMY_DATABASE_URL.split('@')[1]}") # Log safe part
             
     except Exception as e:
         print(f"⚠️ Failed to apply Pooler fix: {e}")
