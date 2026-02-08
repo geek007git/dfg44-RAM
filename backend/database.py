@@ -28,39 +28,49 @@ else:
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
     
     # -------------------------------------------------------------------------
-    # SMART FIX: Use Supabase Connection Pooler (IPv4) - Transaction Mode
+    # TARGETED FIX: Use Supabase Connection Pooler (IPv4)
     # -------------------------------------------------------------------------
     try:
-        from sqlalchemy.engine.url import make_url
+        from urllib.parse import urlparse, urlunparse, quote_plus
         
-        # Safe URL parsing
-        db_url = make_url(SQLALCHEMY_DATABASE_URL)
+        # Use standard urllib to parse
+        parsed = urlparse(SQLALCHEMY_DATABASE_URL)
         
-        # Check if direct Supabase URL (db.project.supabase.co)
-        if db_url.host and db_url.host.endswith(".supabase.co") and "db." in db_url.host:
-            project_ref = db_url.host.split(".")[0].replace("db.", "")
+        # Check for specific project hostname to be absolutely sure
+        if "dteuzkezeefjhumdlojo" in parsed.hostname:
+            print("✅ Detected Project: dteuzkezeefjhumdlojo")
             
-            # Switch to Transaction Mode Pooler (IPv4 compatible, Port 6543)
-            # This is cleaner for Serverless environments
-            pooler_hostname = "aws-0-ap-south-1.pooler.supabase.com"
+            # 1. Host -> Pooler
+            new_hostname = "aws-0-ap-south-1.pooler.supabase.com"
             
-            # Update User: postgres -> postgres.project_ref
-            current_user = db_url.username
-            if current_user and "." not in current_user:
-                new_user = f"{current_user}.{project_ref}"
+            # 2. Port -> 6543 (Transaction Mode)
+            new_port = 6543
+            
+            # 3. User -> user.project_ref
+            username = parsed.username
+            project_ref = "dteuzkezeefjhumdlojo"
+            if username and "." not in username:
+                new_username = f"{username}.{project_ref}"
             else:
-                new_user = current_user
+                new_username = username
                 
-            # Construct new robust URL
-            # Note: set() returns a NEW URL object in newer SQLAlchemy versions
-            db_url = db_url.set(
-                host=pooler_hostname,
-                username=new_user,
-                port=6543
-            )
+            # Reconstruct the URL manually to avoid library issues
+            # scheme://user:pass@host:port/path
             
-            SQLALCHEMY_DATABASE_URL = str(db_url)
-            print(f"✅ Auto-Switched to IPv4 Pooler (Tx Mode): {pooler_hostname}")
+            # Handle password safely (it might have special chars)
+            password = parsed.password
+            path = parsed.path
+            query = parsed.query
+            
+            # Rebuild netloc
+            new_netloc = f"{new_username}:{password}@{new_hostname}:{new_port}"
+            
+            # Update the URL
+            # _replace method is available on the named tuple returned by urlparse
+            new_parsed = parsed._replace(netloc=new_netloc)
+            SQLALCHEMY_DATABASE_URL = urlunparse(new_parsed)
+            
+            print(f"✅ REWRITTEN URL TO: {new_hostname}:{new_port}")
             
     except Exception as e:
         print(f"⚠️ Failed to apply Pooler fix: {e}")
