@@ -18,16 +18,28 @@ if not SQLALCHEMY_DATABASE_URL:
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL, connect_args=connect_args
     )
-else:
     # Postgres adjustments
-    connect_args = {}
+    connect_args = {
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    }
+    # Supabase/Postgres on Vercel often requires SSL
+    if "supabase" in SQLALCHEMY_DATABASE_URL or "sslmode" not in SQLALCHEMY_DATABASE_URL:
+         connect_args["sslmode"] = "require"
+
     if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
     
     # Create Database Engine with NullPool for Serverless
-    engine = create_engine(
-        SQLALCHEMY_DATABASE_URL, connect_args=connect_args, poolclass=NullPool
-    )
+    try:
+        engine = create_engine(
+            SQLALCHEMY_DATABASE_URL, connect_args=connect_args, poolclass=NullPool
+        )
+    except Exception as e:
+        print(f"Error creating DB engine: {e}")
+        raise e
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

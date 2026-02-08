@@ -10,7 +10,11 @@ from . import models, schemas, database
 from .models import Commission, Application
 
 # Create tables
-models.Base.metadata.create_all(bind=database.engine)
+# Create tables (safely)
+try:
+    models.Base.metadata.create_all(bind=database.engine)
+except Exception as e:
+    print(f"Failed to create tables. Verify DB connection: {e}")
 
 app = FastAPI()
 
