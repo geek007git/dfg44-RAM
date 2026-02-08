@@ -32,17 +32,23 @@ else:
     # Vercel sometimes attempts IPv6 connections which fail with "Cannot assign requested address"
     # We manually resolve the hostname to an IPv4 address to bypass this.
     # -------------------------------------------------------------------------
+    # WORKAROUND: Force IPv4 for Supabase on Vercel
     try:
         from urllib.parse import urlparse
         parsed = urlparse(SQLALCHEMY_DATABASE_URL)
         hostname = parsed.hostname
         
         if hostname:
-            ip_address = socket.gethostbyname(hostname)
-            SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(hostname, ip_address)
-            print(f"✅ Resolved {hostname} to {ip_address} to force IPv4 connection")
+            # specifically look for IPv4 (AF_INET)
+            # result is list of (family, type, proto, canonname, sockaddr)
+            # sockaddr is (ip, port)
+            addr_info = socket.getaddrinfo(hostname, 5432, family=socket.AF_INET)
+            if addr_info:
+                ip_address = addr_info[0][4][0]
+                SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(hostname, ip_address)
+                print(f"CHECK: Force resolved {hostname} to {ip_address}")
     except Exception as e:
-        print(f"⚠️ Failed to force IPv4 resolution: {e}")
+        print(f"CHECK: DNS resolution failed: {e}")
     # -------------------------------------------------------------------------
 
     connect_args = {
