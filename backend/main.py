@@ -107,6 +107,32 @@ async def websocket_endpoint(websocket: WebSocket, application_id: int):
     except Exception:
         pass
 
+@app.get("/api/debug-db")
+def debug_database():
+    import os
+    db_url = os.getenv("DATABASE_URL")
+    
+    status = {
+        "database_url_present": bool(db_url),
+        "engine_initialized": database.engine is not None,
+        "connection_error": None
+    }
+    
+    # Mask URL for security if present
+    if db_url:
+        status["masked_url"] = db_url[:15] + "..." if len(db_url) > 15 else "Short URL"
+
+    if database.engine:
+        try:
+            with database.engine.connect() as connection:
+                from sqlalchemy import text
+                result = connection.execute(text("SELECT 1"))
+                status["connection_test"] = "Success - SELECT 1 returned row"
+        except Exception as e:
+            status["connection_error"] = str(e)
+    
+    return status
+
 @app.get("/")
 def read_root():
     return FileResponse(os.path.join(FRONTEND_DIR, 'index.html'))
